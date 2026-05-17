@@ -1,0 +1,41 @@
+[gd_scene load_steps=3 format=3 uid="uid://b511fotmjiphq"]
+
+[ext_resource type="Texture2D" uid="uid://dr0dmv52lhn1t" path="res://textures/piege bas bord.png" id="1_81nfe"]
+[ext_resource type="Texture2D" uid="uid://dn1gul4pt6o5d" path="res://textures/vide.png" id="2_jgvxg"]
+
+[node name="ObstacleBas" type="Node2D"]
+
+[node name="StaticBody2D2" type="StaticBody2D" parent="."]
+position = Vector2(768, 0)
+
+[node name="Sprite2D" type="Sprite2D" parent="StaticBody2D2"]
+position = Vector2(256, 392)
+scale = Vector2(-16, 16)
+texture = ExtResource("1_81nfe")
+centered = false
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="StaticBody2D2"]
+position = Vector2(271.79065, 392)
+scale = Vector2(-9.835909, 15.999995)
+polygon = PackedVector2Array(0, 0, 0, 16, 16, 16, 16, 0)
+
+[node name="EndPoint" type="Marker2D" parent="."]
+position = Vector2(1024, 0)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="."]
+
+[node name="Sprite2D" type="Sprite2D" parent="StaticBody2D"]
+position = Vector2(0, 392)
+scale = Vector2(16, 16)
+texture = ExtResource("1_81nfe")
+centered = false
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="StaticBody2D"]
+position = Vector2(-25.462505, 392)
+scale = Vector2(10.695312, 15.999999)
+polygon = PackedVector2Array(0, 0, 0, 16, 16, 16, 16, 0)
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(516.5, 520)
+scale = Vector2(33.4375, 16)
+texture = ExtResource("2_jgvxg")

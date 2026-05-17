@@ -1,0 +1,63 @@
+[gd_scene load_steps=2 format=3 uid="uid://b6jx4a8shccbd"]
+
+[ext_resource type="Texture2D" uid="uid://cqn1hn0j7q1tn" path="res://textures/texture sol.png" id="1_mvdj0"]
+
+[node name="GrassChunk" type="Node2D"]
+
+[node name="EndPoint" type="Marker2D" parent="."]
+position = Vector2(1024, 0)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="."]
+
+[node name="Sprite2D" type="Sprite2D" parent="StaticBody2D"]
+position = Vector2(0, 392)
+scale = Vector2(16, 16)
+texture = ExtResource("1_mvdj0")
+centered = false
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="StaticBody2D"]
+position = Vector2(0, 392)
+scale = Vector2(16, 16)
+polygon = PackedVector2Array(0, 0, 0, 16, 16, 16, 16, 0)
+
+[node name="StaticBody2D2" type="StaticBody2D" parent="."]
+position = Vector2(256, 0)
+
+[node name="Sprite2D" type="Sprite2D" parent="StaticBody2D2"]
+position = Vector2(0, 392)
+scale = Vector2(16, 16)
+texture = ExtResource("1_mvdj0")
+centered = false
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="StaticBody2D2"]
+position = Vector2(0, 392)
+scale = Vector2(16, 16)
+polygon = PackedVector2Array(0, 0, 0, 16, 16, 16, 16, 0)
+
+[node name="StaticBody2D3" type="StaticBody2D" parent="."]
+position = Vector2(512, 0)
+
+[node name="Sprite2D" type="Sprite2D" parent="StaticBody2D3"]
+position = Vector2(0, 392)
+scale = Vector2(16, 16)
+texture = ExtResource("1_mvdj0")
+centered = false
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="StaticBody2D3"]
+position = Vector2(0, 392)
+scale = Vector2(16, 16)
+polygon = PackedVector2Array(0, 0, 0, 16, 16, 16, 16, 0)
+
+[node name="StaticBody2D4" type="StaticBody2D" parent="."]
+position = Vector2(768, 0)
+
+[node name="Sprite2D" type="Sprite2D" parent="StaticBody2D4"]
+position = Vector2(0, 392)
+scale = Vector2(16, 16)
+texture = ExtResource("1_mvdj0")
+centered = false
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="StaticBody2D4"]
+position = Vector2(0, 392)
+scale = Vector2(16, 16)
+polygon = PackedVector2Array(0, 0, 0, 16, 16, 16, 16, 0)
