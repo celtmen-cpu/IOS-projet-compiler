@@ -16,11 +16,10 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v4
 
-      # Installer Godot via téléchargement direct (brew peut être instable)
       - name: Download Godot
         run: |
           GODOT_VERSION="4.3"
-          wget https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_macos.universal.zip
+          wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_macos.universal.zip
           unzip -q Godot_v${GODOT_VERSION}-stable_macos.universal.zip
           sudo mv Godot.app /Applications/
           
@@ -29,53 +28,81 @@ jobs:
           echo '#!/bin/bash' > /usr/local/bin/godot
           echo '/Applications/Godot.app/Contents/MacOS/Godot "$@"' >> /usr/local/bin/godot
           chmod +x /usr/local/bin/godot
+          godot --version
 
-      # Télécharger les templates d'export iOS
       - name: Download iOS export templates
         run: |
           GODOT_VERSION="4.3"
           mkdir -p ~/Library/Application\ Support/Godot/export_templates/${GODOT_VERSION}.stable
-          wget https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
           unzip -q Godot_v${GODOT_VERSION}-stable_export_templates.tpz
           cp -r templates/* ~/Library/Application\ Support/Godot/export_templates/${GODOT_VERSION}.stable/
 
-      # Vérifier la configuration du projet
+      # FIX : Nettoyer les UIDs et créer fichiers manquants
+      - name: Fix project files
+        run: |
+          # Créer .env vide
+          touch .env
+          
+          # Backup project.godot
+          cp project.godot project.godot.backup
+          
+          # Remplacer tous les uid:// par des chemins res://
+          if grep -q "uid://" project.godot; then
+            echo "🔧 Fixing UIDs in project.godot..."
+            sed -i.bak 's|config/icon="uid://[^"]*"|config/icon="res://icon.png"|g' project.godot
+            sed -i.bak 's|boot_splash/image="uid://[^"]*"|boot_splash/image="res://icon.png"|g' project.godot
+          fi
+          
+          # Vérifier que icon.png existe
+          if [ ! -f "icon.png" ] && [ ! -f "icon.svg" ]; then
+            echo "⚠️ Pas d'icône trouvée, création d'une icône par défaut"
+            # Créer une icône minimale PNG 1x1 transparent
+            echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > icon.png
+          fi
+          
+          echo "✅ Project files fixed"
+
       - name: Verify export preset
         run: |
           if [ ! -f "export_presets.cfg" ]; then
-            echo "❌ export_presets.cfg manquant !"
+            echo "❌ export_presets.cfg missing!"
             exit 1
           fi
+          echo "📄 Export presets:"
           cat export_presets.cfg
 
-      # Export iOS
       - name: Export iOS
         run: |
           mkdir -p build/ios
-          godot --headless --export-release "iOS" build/ios/game.xcodeproj || {
+          godot --headless --export-release "iOS" build/ios/game.xcodeproj 2>&1 | tee export.log || {
             echo "❌ Export failed"
+            cat export.log
             exit 1
           }
 
-      # Vérifier le contenu de l'export
       - name: Verify export
         run: |
           ls -lah build/ios/
           if [ ! -d "build/ios/game.xcodeproj" ]; then
             echo "❌ game.xcodeproj not found!"
+            ls -R build/ios/
             exit 1
           fi
 
-      # Trouver le scheme automatiquement
       - name: Find Xcode scheme
         id: find_scheme
         run: |
           cd build/ios
-          SCHEME=$(xcodebuild -list -project *.xcodeproj | grep -A 100 "Schemes:" | grep -v "Schemes:" | head -1 | xargs)
+          SCHEME=$(xcodebuild -list -project game.xcodeproj 2>/dev/null | grep -A 100 "Schemes:" | grep -v "Schemes:" | head -1 | xargs)
+          if [ -z "$SCHEME" ]; then
+            echo "❌ No scheme found!"
+            xcodebuild -list -project game.xcodeproj
+            exit 1
+          fi
           echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
-          echo "Found scheme: $SCHEME"
+          echo "✅ Found scheme: $SCHEME"
 
-      # Build archive avec gestion d'erreur
       - name: Build archive
         run: |
           cd build/ios
@@ -88,12 +115,12 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            archive || {
+            archive 2>&1 | tee build.log || {
               echo "❌ xcodebuild failed"
+              tail -100 build.log
               exit 1
             }
 
-      # Vérifier que l'archive existe
       - name: Verify archive
         run: |
           if [ ! -d "build/ios/game.xcarchive" ]; then
@@ -101,15 +128,14 @@ jobs:
             exit 1
           fi
           du -sh build/ios/game.xcarchive
+          echo "✅ Archive created successfully"
 
-      # Zip archive
       - name: Zip archive
         run: |
           cd build/ios
-          zip -r game.xcarchive.zip game.xcarchive
+          zip -r -q game.xcarchive.zip game.xcarchive
           ls -lh game.xcarchive.zip
 
-      # Release GitHub avec gestion d'erreur
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
