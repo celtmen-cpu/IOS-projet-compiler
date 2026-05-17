@@ -1,4 +1,4 @@
-name: iOS Build
+name: iOS Build (Verbose)
 
 on:
   push:
@@ -13,99 +13,239 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - name: Checkout project
+      - name: 📦 Checkout project
         uses: actions/checkout@v4
 
-      - name: Download Godot
+      - name: 🔍 Show repository structure
         run: |
+          echo "=== Repository contents ==="
+          ls -lah
+          echo ""
+          echo "=== Project structure ==="
+          find . -maxdepth 3 -type f | head -20
+
+      - name: ⬇️ Download Godot
+        run: |
+          echo "=== Downloading Godot 4.3 ==="
           GODOT_VERSION="4.3"
-          wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_macos.universal.zip
-          unzip -q Godot_v${GODOT_VERSION}-stable_macos.universal.zip
-          sudo mv Godot.app /Applications/
+          wget -q --show-progress https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_macos.universal.zip
           
-      - name: Setup Godot command
+          echo ""
+          echo "=== Extracting Godot ==="
+          unzip -q Godot_v${GODOT_VERSION}-stable_macos.universal.zip
+          ls -lah
+          
+          echo ""
+          echo "=== Moving to /Applications ==="
+          sudo mv Godot.app /Applications/
+          ls -lah /Applications/Godot.app/Contents/MacOS/
+          
+      - name: 🔧 Setup Godot command
         run: |
+          echo "=== Creating godot symlink ==="
           echo '#!/bin/bash' > /usr/local/bin/godot
           echo '/Applications/Godot.app/Contents/MacOS/Godot "$@"' >> /usr/local/bin/godot
           chmod +x /usr/local/bin/godot
+          
+          echo ""
+          echo "=== Testing Godot ==="
           godot --version
+          which godot
 
-      - name: Download iOS export templates
+      - name: 📥 Download iOS export templates
         run: |
+          echo "=== Creating templates directory ==="
           GODOT_VERSION="4.3"
           mkdir -p ~/Library/Application\ Support/Godot/export_templates/${GODOT_VERSION}.stable
-          wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          
+          echo ""
+          echo "=== Downloading templates ==="
+          wget -q --show-progress https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          
+          echo ""
+          echo "=== Extracting templates ==="
           unzip -q Godot_v${GODOT_VERSION}-stable_export_templates.tpz
-          cp -r templates/* ~/Library/Application\ Support/Godot/export_templates/${GODOT_VERSION}.stable/
+          ls -lah templates/
+          
+          echo ""
+          echo "=== Copying templates ==="
+          cp -rv templates/* ~/Library/Application\ Support/Godot/export_templates/${GODOT_VERSION}.stable/
+          
+          echo ""
+          echo "=== Verifying templates ==="
+          ls -lah ~/Library/Application\ Support/Godot/export_templates/${GODOT_VERSION}.stable/
 
-      # FIX : Nettoyer les UIDs et créer fichiers manquants
-      - name: Fix project files
+      - name: 🩹 Fix project files (UIDs + .env)
         run: |
-          # Créer .env vide
-          touch .env
+          echo "=== Current directory ==="
+          pwd
+          ls -lah
           
-          # Backup project.godot
-          cp project.godot project.godot.backup
+          echo ""
+          echo "=== Creating .env file in project root ==="
+          cat > .env << 'EOF'
+          # Godot .env file (created by CI)
+          EOF
           
-          # Remplacer tous les uid:// par des chemins res://
-          if grep -q "uid://" project.godot; then
-            echo "🔧 Fixing UIDs in project.godot..."
-            sed -i.bak 's|config/icon="uid://[^"]*"|config/icon="res://icon.png"|g' project.godot
-            sed -i.bak 's|boot_splash/image="uid://[^"]*"|boot_splash/image="res://icon.png"|g' project.godot
+          echo "✅ .env created:"
+          cat .env
+          ls -lah .env
+          
+          echo ""
+          echo "=== Checking project.godot ==="
+          if [ -f "project.godot" ]; then
+            echo "✅ project.godot found"
+            
+            # Backup
+            cp project.godot project.godot.backup
+            
+            # Check for UIDs
+            if grep -q "uid://" project.godot; then
+              echo ""
+              echo "🔧 Fixing UIDs in project.godot..."
+              echo "Before:"
+              grep "uid://" project.godot || true
+              
+              # Fix UIDs
+              sed -i.bak 's|"uid://[^"]*"|"res://icon.png"|g' project.godot
+              
+              echo "After:"
+              grep "icon\|splash" project.godot || true
+            else
+              echo "✅ No UIDs to fix"
+            fi
+            
+            echo ""
+            echo "=== project.godot config section ==="
+            grep -A 5 "\[application\]" project.godot || true
+            grep -A 5 "\[display\]" project.godot || true
+          else
+            echo "❌ project.godot not found!"
+            exit 1
           fi
           
-          # Vérifier que icon.png existe
+          echo ""
+          echo "=== Checking icon files ==="
+          ls -lah icon.* 2>/dev/null || echo "⚠️ No icon file found"
+          
           if [ ! -f "icon.png" ] && [ ! -f "icon.svg" ]; then
-            echo "⚠️ Pas d'icône trouvée, création d'une icône par défaut"
-            # Créer une icône minimale PNG 1x1 transparent
+            echo "Creating default icon.png..."
+            # PNG transparent 128x128
             echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > icon.png
+            echo "✅ Default icon created"
           fi
           
-          echo "✅ Project files fixed"
+          echo ""
+          echo "=== Final project files ==="
+          ls -lah
 
-      - name: Verify export preset
+      - name: 📋 Verify export preset
         run: |
+          echo "=== Checking export_presets.cfg ==="
           if [ ! -f "export_presets.cfg" ]; then
             echo "❌ export_presets.cfg missing!"
+            echo "Available files:"
+            ls -lah
             exit 1
           fi
-          echo "📄 Export presets:"
+          
+          echo "✅ export_presets.cfg found"
+          echo ""
+          echo "=== Export presets content ==="
           cat export_presets.cfg
+          
+          echo ""
+          echo "=== Checking for iOS preset ==="
+          if grep -q '\[preset\.[0-9]\]' export_presets.cfg; then
+            echo "✅ Presets found"
+            grep "name=" export_presets.cfg || true
+          else
+            echo "❌ No presets configured!"
+            exit 1
+          fi
 
-      - name: Export iOS
+      - name: 🚀 Export iOS
         run: |
+          echo "=== Creating build directory ==="
           mkdir -p build/ios
-          godot --headless --export-release "iOS" build/ios/game.xcodeproj 2>&1 | tee export.log || {
-            echo "❌ Export failed"
+          
+          echo ""
+          echo "=== Starting Godot export ==="
+          echo "Command: godot --headless --export-release \"iOS\" build/ios/game.xcodeproj"
+          
+          godot --headless --verbose --export-release "iOS" build/ios/game.xcodeproj 2>&1 | tee export.log
+          
+          EXPORT_STATUS=${PIPESTATUS[0]}
+          
+          echo ""
+          echo "=== Export completed with status: $EXPORT_STATUS ==="
+          
+          if [ $EXPORT_STATUS -ne 0 ]; then
+            echo "❌ Export failed!"
+            echo ""
+            echo "=== Full export log ==="
             cat export.log
             exit 1
-          }
+          fi
+          
+          echo "✅ Export successful"
 
-      - name: Verify export
+      - name: ✅ Verify export
         run: |
+          echo "=== Checking build/ios directory ==="
           ls -lah build/ios/
+          
+          echo ""
+          echo "=== Checking for xcodeproj ==="
           if [ ! -d "build/ios/game.xcodeproj" ]; then
             echo "❌ game.xcodeproj not found!"
-            ls -R build/ios/
+            echo ""
+            echo "=== Full build directory structure ==="
+            find build/ios -type f
             exit 1
           fi
+          
+          echo "✅ game.xcodeproj found"
+          echo ""
+          echo "=== Xcode project structure ==="
+          ls -lah build/ios/game.xcodeproj/
+          
+          echo ""
+          echo "=== All exported files ==="
+          find build/ios -type f | head -20
 
-      - name: Find Xcode scheme
+      - name: 🔎 Find Xcode scheme
         id: find_scheme
         run: |
+          echo "=== Listing available schemes ==="
           cd build/ios
+          
+          xcodebuild -list -project game.xcodeproj 2>&1 | tee schemes.log
+          
+          echo ""
+          echo "=== Extracting scheme name ==="
           SCHEME=$(xcodebuild -list -project game.xcodeproj 2>/dev/null | grep -A 100 "Schemes:" | grep -v "Schemes:" | head -1 | xargs)
+          
           if [ -z "$SCHEME" ]; then
             echo "❌ No scheme found!"
-            xcodebuild -list -project game.xcodeproj
+            cat schemes.log
             exit 1
           fi
+          
           echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
           echo "✅ Found scheme: $SCHEME"
 
-      - name: Build archive
+      - name: 🏗️ Build archive
         run: |
+          echo "=== Starting xcodebuild archive ==="
           cd build/ios
+          
+          echo "Project: game.xcodeproj"
+          echo "Scheme: ${{ steps.find_scheme.outputs.scheme }}"
+          echo "SDK: iphoneos"
+          echo "Configuration: Release"
+          echo ""
+          
           xcodebuild \
             -project game.xcodeproj \
             -scheme "${{ steps.find_scheme.outputs.scheme }}" \
@@ -115,33 +255,84 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            archive 2>&1 | tee build.log || {
-              echo "❌ xcodebuild failed"
-              tail -100 build.log
-              exit 1
-            }
-
-      - name: Verify archive
-        run: |
-          if [ ! -d "build/ios/game.xcarchive" ]; then
-            echo "❌ Archive not created!"
+            -verbose \
+            archive 2>&1 | tee build.log
+          
+          BUILD_STATUS=${PIPESTATUS[0]}
+          
+          echo ""
+          echo "=== Build completed with status: $BUILD_STATUS ==="
+          
+          if [ $BUILD_STATUS -ne 0 ]; then
+            echo "❌ xcodebuild failed!"
+            echo ""
+            echo "=== Last 100 lines of build log ==="
+            tail -100 build.log
             exit 1
           fi
-          du -sh build/ios/game.xcarchive
-          echo "✅ Archive created successfully"
+          
+          echo "✅ Build successful"
 
-      - name: Zip archive
+      - name: 📦 Verify archive
         run: |
-          cd build/ios
-          zip -r -q game.xcarchive.zip game.xcarchive
-          ls -lh game.xcarchive.zip
+          echo "=== Checking for xcarchive ==="
+          if [ ! -d "build/ios/game.xcarchive" ]; then
+            echo "❌ Archive not created!"
+            echo ""
+            echo "=== Build directory contents ==="
+            ls -lah build/ios/
+            exit 1
+          fi
+          
+          echo "✅ Archive found"
+          echo ""
+          echo "=== Archive size ==="
+          du -sh build/ios/game.xcarchive
+          
+          echo ""
+          echo "=== Archive structure ==="
+          ls -lah build/ios/game.xcarchive/
 
-      - name: Create Release
+      - name: 🗜️ Zip archive
+        run: |
+          echo "=== Creating zip archive ==="
+          cd build/ios
+          
+          zip -r -q game.xcarchive.zip game.xcarchive
+          
+          echo "✅ Zip created"
+          echo ""
+          echo "=== Zip file info ==="
+          ls -lh game.xcarchive.zip
+          
+          echo ""
+          echo "=== Zip contents preview ==="
+          unzip -l game.xcarchive.zip | head -20
+
+      - name: 🎉 Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: Godot iOS Build ${{ github.run_number }}
+          body: |
+            🎮 Godot iOS Build
+            
+            📱 Platform: iOS
+            🔢 Build: #${{ github.run_number }}
+            📦 Archive: game.xcarchive.zip
+            
+            ✅ Ready for deployment
           files: build/ios/game.xcarchive.zip
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 🎊 Summary
+        if: success()
+        run: |
+          echo "=== BUILD SUCCESSFUL ==="
+          echo "✅ iOS export completed"
+          echo "✅ Xcode archive created"
+          echo "✅ Release published"
+          echo ""
+          echo "📦 Download your build from the Releases page"
