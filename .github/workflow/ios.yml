@@ -1,0 +1,35 @@
+name: iOS Build
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Télécharger le xcframework depuis Google Drive
+      - name: Download xcframework
+        run: |
+          curl -L "https://drive.google.com/drive/folders/1OQ9BOfAW-x6XPJixH2t1h7qd_DwrRbYR" \
+          -o MySDK.xcframework
+
+      # Le déplacer dans le projet
+      - name: Move xcframework
+        run: |
+          mkdir -p Frameworks
+          mv MySDK.xcframework Frameworks/
+
+      # Build iOS
+      - name: Build app
+        run: |
+          xcodebuild \
+            -project TonProjet.xcodeproj \
+            -scheme TonScheme \
+            -sdk iphoneos \
+            -configuration Release \
+            build
