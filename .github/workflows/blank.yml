@@ -16,50 +16,106 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v4
 
-      # Installer Godot
-      - name: Install Godot
+      # Installer Godot via téléchargement direct (brew peut être instable)
+      - name: Download Godot
         run: |
-          brew install godot
-
-      - name: Install Godot templates (clean)
+          GODOT_VERSION="4.3"
+          wget https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_macos.universal.zip
+          unzip -q Godot_v${GODOT_VERSION}-stable_macos.universal.zip
+          sudo mv Godot.app /Applications/
+          
+      - name: Setup Godot command
         run: |
-          mkdir -p ~/Library/Application\ Support/Godot/export_templates
-          godot --headless --quit
+          echo '#!/bin/bash' > /usr/local/bin/godot
+          echo '/Applications/Godot.app/Contents/MacOS/Godot "$@"' >> /usr/local/bin/godot
+          chmod +x /usr/local/bin/godot
 
-      # Export iOS depuis le projet Godot
+      # Télécharger les templates d'export iOS
+      - name: Download iOS export templates
+        run: |
+          GODOT_VERSION="4.3"
+          mkdir -p ~/Library/Application\ Support/Godot/export_templates/${GODOT_VERSION}.stable
+          wget https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          unzip -q Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          cp -r templates/* ~/Library/Application\ Support/Godot/export_templates/${GODOT_VERSION}.stable/
+
+      # Vérifier la configuration du projet
+      - name: Verify export preset
+        run: |
+          if [ ! -f "export_presets.cfg" ]; then
+            echo "❌ export_presets.cfg manquant !"
+            exit 1
+          fi
+          cat export_presets.cfg
+
+      # Export iOS
       - name: Export iOS
         run: |
           mkdir -p build/ios
-          godot --headless --export-release "iOS" build/ios
+          godot --headless --export-release "iOS" build/ios/game.xcodeproj || {
+            echo "❌ Export failed"
+            exit 1
+          }
 
-      # Vérifier contenu export
-      - name: List files
-        run: ls -R build/ios
+      # Vérifier le contenu de l'export
+      - name: Verify export
+        run: |
+          ls -lah build/ios/
+          if [ ! -d "build/ios/game.xcodeproj" ]; then
+            echo "❌ game.xcodeproj not found!"
+            exit 1
+          fi
 
-      # Build archive
+      # Trouver le scheme automatiquement
+      - name: Find Xcode scheme
+        id: find_scheme
+        run: |
+          cd build/ios
+          SCHEME=$(xcodebuild -list -project *.xcodeproj | grep -A 100 "Schemes:" | grep -v "Schemes:" | head -1 | xargs)
+          echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
+          echo "Found scheme: $SCHEME"
+
+      # Build archive avec gestion d'erreur
       - name: Build archive
         run: |
           cd build/ios
           xcodebuild \
-            -project *.xcodeproj \
-            -scheme * \
+            -project game.xcodeproj \
+            -scheme "${{ steps.find_scheme.outputs.scheme }}" \
             -sdk iphoneos \
             -configuration Release \
-            -archivePath $PWD/game.xcarchive \
-            archive
+            -archivePath "$PWD/game.xcarchive" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            archive || {
+              echo "❌ xcodebuild failed"
+              exit 1
+            }
+
+      # Vérifier que l'archive existe
+      - name: Verify archive
+        run: |
+          if [ ! -d "build/ios/game.xcarchive" ]; then
+            echo "❌ Archive not created!"
+            exit 1
+          fi
+          du -sh build/ios/game.xcarchive
 
       # Zip archive
       - name: Zip archive
         run: |
           cd build/ios
           zip -r game.xcarchive.zip game.xcarchive
+          ls -lh game.xcarchive.zip
 
-      # Release GitHub
+      # Release GitHub avec gestion d'erreur
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: Godot iOS Build ${{ github.run_number }}
           files: build/ios/game.xcarchive.zip
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
