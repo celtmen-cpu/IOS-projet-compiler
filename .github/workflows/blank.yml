@@ -21,7 +21,7 @@ jobs:
         run: |
           brew install godot
 
-      - name: Setup templates
+      - name: Install Godot templates (clean)
         run: |
           mkdir -p ~/Library/Application\ Support/Godot/export_templates
           godot --headless --quit
