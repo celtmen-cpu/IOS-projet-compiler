@@ -3,6 +3,7 @@ name: iOS Build
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -30,7 +31,7 @@ jobs:
       - name: List files
         run: ls -R build/ios
 
-      # Build Xcode archive
+      # Build archive
       - name: Build archive
         run: |
           cd build/ios
