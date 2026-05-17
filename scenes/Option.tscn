@@ -1,0 +1,76 @@
+[gd_scene load_steps=4 format=3 uid="uid://ceiinv6pe2kyi"]
+
+[ext_resource type="Script" uid="uid://0ovm6e8k7spn" path="res://scripts/option.gd" id="1_uogt6"]
+
+[sub_resource type="Gradient" id="Gradient_yeb2x"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_uogt6"]
+gradient = SubResource("Gradient_yeb2x")
+fill_from = Vector2(0.50431037, 0)
+fill_to = Vector2(0.49137932, 1)
+
+[node name="Control" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_uogt6")
+
+[node name="TextureRect" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = SubResource("GradientTexture2D_uogt6")
+
+[node name="ButtonMainMenu" type="Button" parent="."]
+layout_mode = 1
+offset_right = 525.0
+offset_bottom = 91.0
+theme_override_font_sizes/font_size = 60
+text = "⬅️ Menu principal"
+
+[node name="ButtonJeu" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -170.0
+offset_bottom = 50.0
+grow_horizontal = 0
+theme_override_font_sizes/font_size = 60
+text = "Jouer➡️"
+
+[node name="Connexion" type="Control" parent="."]
+visible = false
+anchors_preset = 0
+offset_left = 1693.0
+offset_right = 1733.0
+offset_bottom = 40.0
+
+[node name="Panel" type="Panel" parent="Connexion"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Email" type="LineEdit" parent="Connexion/Panel"]
+layout_mode = 0
+offset_right = 68.5625
+offset_bottom = 31.0
+
+[connection signal="button_down" from="ButtonMainMenu" to="." method="_on_button_main_menu_button_down"]
+[connection signal="pressed" from="ButtonJeu" to="." method="_on_button_jeu_pressed"]
