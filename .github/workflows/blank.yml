@@ -21,6 +21,13 @@ jobs:
         run: |
           brew install godot
 
+      - name: Install Godot export templates
+        run: |
+          mkdir -p ~/Library/Application\ Support/Godot/export_templates/4.6.2.stable/
+          curl -L https://downloads.tuxfamily.org/godotengine/4.6.2/Godot_v4.6.2-stable_export_templates.tpz -o templates.tpz
+          unzip templates.tpz
+          mv templates/* ~/Library/Application\ Support/Godot/export_templates/4.6.2.stable/
+
       # Export iOS depuis le projet Godot
       - name: Export iOS
         run: |
